@@ -520,8 +520,18 @@ bool FtpServer::processCommand()
   DEBUG_PRINT(F("Command is: "));
   DEBUG_PRINTLN(command);
 
+  // Command authorization: an optional filter may reject a command (read-only, etc.)
+  if (_commandFilter) {
+    const char * denyReason = _commandFilter(command, parameter);
+    if (denyReason) {
+      client.print(F("550 "));
+      client.println(denyReason);
+      return true;
+    }
+  }
+
   //
-  //  USER - User Identity 
+  //  USER - User Identity
   //
   if( CommandIs( "USER" ))
   {

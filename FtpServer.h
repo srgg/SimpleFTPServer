@@ -569,10 +569,20 @@ public:
 		_transferCallback = _transferCallbackParam;
 	}
 
+	// Per-command authorization hook, invoked for every parsed command before
+	// dispatch. Return nullptr to allow it, or a reason string to reject it (the
+	// server replies "550 <reason>"). The pointer is used immediately, so it must
+	// point to static storage (a string literal), not a local buffer.
+	void setCommandFilter(const char * (*_commandFilterParam)(const char* command, const char* parameter) )
+	{
+		_commandFilter = _commandFilterParam;
+	}
+
 private:
   // Use 32-bit sizes for callbacks to avoid truncation on platforms where "unsigned int" is 16-bit (AVR)
   void (*_callback)(FtpOperation ftpOperation, uint32_t freeSpace, uint32_t totalSpace){};
   void (*_transferCallback)(FtpTransferOperation ftpOperation, const char* name, uint32_t transferredSize){};
+  const char * (*_commandFilter)(const char* command, const char* parameter){};
 
   void    iniVariables();
   void    clientConnected();
