@@ -12,7 +12,7 @@
  * Commands implemented: 
  *   USER, PASS, AUTH (AUTH only return 'not implemented' code)
  *   CDUP, CWD, PWD, QUIT, NOOP
- *   MODE, PASV, PORT, STRU, TYPE
+ *   MODE, PASV, EPSV, PORT, STRU, TYPE
  *   ABOR, DELE, LIST, NLST, MLST, MLSD
  *   APPE, RETR, STOR
  *   MKD,  RMD
@@ -714,6 +714,7 @@ bool FtpServer::processCommand()
 	client.println(F(" UTF8") );
 #endif
     client.println(F(" SIZE") );
+    client.println(F(" EPSV") );
     client.println(F(" SITE FREE") );
     client.println(F("211 End.") );
   }
@@ -887,6 +888,35 @@ bool FtpServer::processCommand()
     dataConn = FTP_Pasive;
   }
   //
+  //  EPSV - Extended Passive Connection management
+  //
+  else if( CommandIs( "EPSV" ))
+  {
+    // 229 names no address, so the client keeps the host it reached the command connection on;
+    // PASV's 227 names one, which a client behind a NAT or a proxy cannot route to.
+    if( ParameterIs( "ALL" ))
+      // Accepting ALL would bind the server to refuse PASV and PORT for the rest of the session.
+      client.println(F("502 ") );
+    else if( parameter != nullptr && strlen( parameter ) > 0 && ! ParameterIs( "1" ))
+      client.println(F("522 Network protocol not supported, use (1)") );
+    else
+    {
+      data.stop();
+      dataServer.begin();
+      dataPort = pasvPort;
+      DEBUG_PRINTLN( F(" Connection management set to extended passive") );
+      DEBUG_PRINT( F(" Listening at port ") ); DEBUG_PRINTLN( dataPort );
+
+      char buffer[64]; // Ensure the buffer is large enough to hold the message
+      snprintf(buffer, sizeof(buffer),
+               "229 Entering Extended Passive Mode (|||%d|)", dataPort);
+
+      client.println(buffer);
+
+      dataConn = FTP_Pasive;
+    }
+  }
+  //
   //  PORT - Data Port
   //
   else if( CommandIs( "PORT" ))
@@ -1050,7 +1080,7 @@ bool FtpServer::processCommand()
     client.println(F("200 Commands implemented:") );
 	client.println(F("      USER, PASS, AUTH (AUTH only return 'not implemented' code)") );
 	client.println(F("      CDUP, CWD, PWD, QUIT, NOOP") );
-	client.println(F("      MODE, PASV, PORT, STRU, TYPE") );
+	client.println(F("      MODE, PASV, EPSV, PORT, STRU, TYPE") );
 	client.println(F("      ABOR, DELE, LIST, NLST, MLST, MLSD") );
 	client.println(F("      APPE, RETR, STOR") );
 	client.println(F("      MKD,  RMD") );
