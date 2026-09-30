@@ -1669,18 +1669,21 @@ bool FtpServer::doRetrieve()
   DEBUG_PRINTLN(buf == fallbackBuf ? 1 : 0);
 #endif
 
+  // Offset by the file position mod 4, so whole sectors land 4-byte aligned after a short-write
+  // rewind: an unaligned one costs ESP32 sdmmc_read_sectors() a 512 B DMA bounce buffer each.
+  uint8_t* dst = buf + (bytesTransfered & 3);
 //  int16_t nb = file.read( buf, FTP_BUF_SIZE );
 #ifdef DYNAMIC_TRANSFER_BUFFER
-	int16_t nb = file.read( buf, ftp_buf_size );
+	int16_t nb = file.read( dst, ftp_buf_size - 4 );
 #else
-	int16_t nb = file.read( buf, FTP_BUF_SIZE );
+	int16_t nb = file.read( dst, FTP_BUF_SIZE - 4 );
 #endif
 
   if( nb > 0 )
   {
     // write() may not send everything in one call on some clients; capture return
     int32_t written = 0;
-    written = writeData( (const uint8_t*) buf, nb );
+    written = writeData( (const uint8_t*) dst, nb );
 
     DEBUG_PRINT(F("NB --> "));
     DEBUG_PRINTLN(nb);
@@ -1692,7 +1695,7 @@ bool FtpServer::doRetrieve()
       int16_t remaining = nb - written;
       DEBUG_PRINT(F("Partial write, attempting remainder -> "));
       DEBUG_PRINTLN(remaining);
-      const uint8_t* p = (const uint8_t*)buf + written;
+      const uint8_t* p = (const uint8_t*)dst + written;
       int32_t more = writeData(p, remaining);
       DEBUG_PRINT(F("MORE WRITTEN -> "));
       DEBUG_PRINTLN(more);
