@@ -497,6 +497,19 @@
 #define FTP_DATA_PORT_DFLT 20     // Default data port in active mode
 #define FTP_DATA_PORT_PASV 50009  // Data port in passive mode
 
+// fatfs's ffconf.h defines FF_MAX_LFN unguarded; included first, it wins in either include order.
+// C linkage as ff.h gives it: its include guard keeps this the only declaration of ff_memalloc().
+#if defined(ESP_PLATFORM) && defined(__has_include)
+#  if __has_include("ffconf.h")
+#    ifdef __cplusplus
+extern "C" {
+#    endif
+#    include "ffconf.h"
+#    ifdef __cplusplus
+}
+#    endif
+#  endif
+#endif
 #ifndef FF_MAX_LFN
 #define FF_MAX_LFN 255            // max size of a long file name
 #endif
